@@ -290,6 +290,3 @@ social_media_app/
 - [Docker Documentation](https://docs.docker.com/)
 
 ---
-
-**Chúc bạn code vui vẻ! 🚀**
-
