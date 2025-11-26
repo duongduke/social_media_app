@@ -20,7 +20,7 @@ export const sidebarLinks = [
     label: "Saved",
   },
   {
-    imgURL: "/assets/icons/instagram-post.svg",
+    imgURL: "/assets/icons/edit.svg",
     route: "/create-post",
     label: "Create Post",
   },
