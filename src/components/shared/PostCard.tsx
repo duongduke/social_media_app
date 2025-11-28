@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { PostStats } from "@/components/shared";
 import { multiFormatDateString } from "@/lib/utils";
 import { useUserContext } from "@/context/AuthContext";
+import { useGetComments } from "@/lib/react-query/queries";
 
 type PostCardProps = {
   post: Models.Document;
@@ -11,8 +12,11 @@ type PostCardProps = {
 
 const PostCard = ({ post }: PostCardProps) => {
   const { user } = useUserContext();
+  const { data: commentsData } = useGetComments(post.$id);
 
   if (!post.creator) return;
+
+  const commentCount = commentsData?.documents?.length ?? 0;
 
   const mediaUrls =
     post.imageUrls?.length > 0
@@ -96,7 +100,12 @@ const PostCard = ({ post }: PostCardProps) => {
         </div>
       </Link>
 
-      <PostStats post={post} userId={user.id} />
+      <PostStats
+        post={post}
+        userId={user.id}
+        commentLink={`/posts/${post.$id}#comments`}
+        commentCount={commentCount}
+      />
     </div>
   );
 };

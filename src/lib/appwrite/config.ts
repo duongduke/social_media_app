@@ -9,6 +9,8 @@ const requiredEnvVars = {
   VITE_APPWRITE_USER_COLLECTION_ID: import.meta.env.VITE_APPWRITE_USER_COLLECTION_ID,
   VITE_APPWRITE_POST_COLLECTION_ID: import.meta.env.VITE_APPWRITE_POST_COLLECTION_ID,
   VITE_APPWRITE_SAVES_COLLECTION_ID: import.meta.env.VITE_APPWRITE_SAVES_COLLECTION_ID,
+  VITE_APPWRITE_COMMENTS_COLLECTION_ID:
+    import.meta.env.VITE_APPWRITE_COMMENTS_COLLECTION_ID,
 };
 
 // Debug: Log tất cả biến môi trường (ẩn giá trị nhạy cảm)
@@ -47,6 +49,8 @@ export const appwriteConfig = {
   userCollectionId: requiredEnvVars.VITE_APPWRITE_USER_COLLECTION_ID || "",
   postCollectionId: requiredEnvVars.VITE_APPWRITE_POST_COLLECTION_ID || "",
   savesCollectionId: requiredEnvVars.VITE_APPWRITE_SAVES_COLLECTION_ID || "",
+  commentsCollectionId:
+    requiredEnvVars.VITE_APPWRITE_COMMENTS_COLLECTION_ID || "",
 };
 
 export const client = new Client();

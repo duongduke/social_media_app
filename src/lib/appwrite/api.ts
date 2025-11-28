@@ -270,7 +270,7 @@ export function getFilePreview(fileId: string) {
 
     if (!fileUrl) throw Error;
 
-    return fileUrl;
+    return fileUrl.toString();
   } catch (error) {
     console.log(error);
     return null;
@@ -412,6 +412,63 @@ async function enrichSavesWithPosts(documents: Models.Document[]) {
   }
 }
 
+async function enrichCommentsWithUsers(documents: Models.Document[]) {
+  if (!documents.length) return documents;
+
+  try {
+    const userIds = Array.from(
+      new Set(
+        documents
+          .map((comment) => {
+            if (typeof comment.user === "string") {
+              return comment.user;
+            }
+
+            if (
+              comment.user &&
+              typeof comment.user === "object" &&
+              "$id" in comment.user
+            ) {
+              return (comment.user as Models.Document).$id;
+            }
+
+            return null;
+          })
+          .filter((id): id is string => !!id)
+      )
+    );
+
+    if (!userIds.length) {
+      return documents;
+    }
+
+    const usersResponse = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.userCollectionId,
+      [Query.equal("$id", userIds)]
+    );
+
+    const usersMap =
+      usersResponse?.documents.reduce(
+        (acc, user) => {
+          acc[user.$id] = user;
+          return acc;
+        },
+        {} as Record<string, Models.Document>
+      ) ?? {};
+
+    return documents.map((comment) => {
+      if (typeof comment.user === "string" && usersMap[comment.user]) {
+        return { ...comment, user: usersMap[comment.user] };
+      }
+      return comment;
+    });
+  } catch (error) {
+    console.error("Lỗi khi gắn user vào comment:", error);
+    return documents;
+  }
+}
+
 // ============================== GET POSTS
 export async function searchPosts(searchTerm: string) {
   try {
@@ -448,6 +505,85 @@ export async function searchPosts(searchTerm: string) {
     return { documents };
   } catch (error) {
     console.log(error);
+  }
+}
+
+// ============================== COMMENTS
+export async function getComments(postId: string) {
+  if (!postId)
+    return {
+      documents: [],
+    };
+
+  try {
+    const comments = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.commentsCollectionId,
+      [Query.equal("post", postId), Query.orderDesc("$createdAt")]
+    );
+
+    const documents = await enrichCommentsWithUsers(comments?.documents ?? []);
+
+    return { ...comments, documents };
+  } catch (error: any) {
+    if (error?.code === 401) {
+      return {
+        documents: [],
+      };
+    }
+    console.error("Lỗi getComments:", error);
+    return {
+      documents: [],
+    };
+  }
+}
+
+export async function createComment({
+  postId,
+  userId,
+  content,
+}: {
+  postId: string;
+  userId: string;
+  content: string;
+}) {
+  try {
+    const newComment = await databases.createDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.commentsCollectionId,
+      ID.unique(),
+      {
+        post: postId,
+        user: userId,
+        content,
+      }
+    );
+
+    if (!newComment) throw Error;
+
+    const [enrichedComment] = await enrichCommentsWithUsers([newComment]);
+
+    return enrichedComment;
+  } catch (error) {
+    console.error("Lỗi createComment:", error);
+    throw error;
+  }
+}
+
+export async function deleteComment(commentId: string) {
+  try {
+    const statusCode = await databases.deleteDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.commentsCollectionId,
+      commentId
+    );
+
+    if (!statusCode) throw Error;
+
+    return { status: "Ok" };
+  } catch (error) {
+    console.error("Lỗi deleteComment:", error);
+    throw error;
   }
 }
 
@@ -1027,6 +1163,25 @@ export async function getUsers(params?: {
     }
 
     throw new Error("Đã xảy ra lỗi khi lấy danh sách users");
+  }
+}
+
+export async function getUsersByIds(userIds: string[]) {
+  if (!userIds || userIds.length === 0) {
+    return [];
+  }
+
+  try {
+    const users = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.userCollectionId,
+      [Query.equal("$id", userIds)]
+    );
+
+    return users?.documents ?? [];
+  } catch (error) {
+    console.error("Lỗi getUsersByIds:", error);
+    return [];
   }
 }
 

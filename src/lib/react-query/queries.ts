@@ -32,6 +32,10 @@ import {
   getLikedPosts,
   getFollowersList,
   getFollowingList,
+  getUsersByIds,
+  getComments,
+  createComment,
+  deleteComment,
 } from "@/lib/appwrite/api";
 import { INewPost, INewUser, IUpdatePost, IUpdateUser } from "@/types";
 
@@ -381,6 +385,85 @@ export const useUpdateUser = () => {
       });
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.GET_USER_BY_ID, data?.$id],
+      });
+    },
+  });
+};
+
+export const useGetUsersByIds = (userIds: string[], enabled = true) => {
+  return useQuery({
+    queryKey: [QUERY_KEYS.GET_USERS_BY_IDS, userIds.sort().join(",")],
+    queryFn: () => getUsersByIds(userIds),
+    enabled: enabled && userIds.length > 0,
+    staleTime: 60 * 1000,
+  });
+};
+
+// ============================================================
+// COMMENTS
+// ============================================================
+
+export const useGetComments = (postId?: string) => {
+  return useQuery({
+    queryKey: [QUERY_KEYS.GET_COMMENTS, postId],
+    queryFn: () => getComments(postId as string),
+    enabled: !!postId,
+  });
+};
+
+export const useCreateComment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      postId,
+      userId,
+      content,
+    }: {
+      postId: string;
+      userId: string;
+      content: string;
+    }) => createComment({ postId, userId, content }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_COMMENTS, variables.postId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_POST_BY_ID, variables.postId],
+      });
+      // Đồng bộ số comment ở Home Feed
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_RECENT_POSTS],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_INFINITE_POSTS],
+      });
+    },
+  });
+};
+
+export const useDeleteComment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      commentId,
+      postId,
+    }: {
+      commentId: string;
+      postId: string;
+    }) => deleteComment(commentId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_COMMENTS, variables.postId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_POST_BY_ID, variables.postId],
+      });
+      // Đồng bộ số comment ở Home Feed
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_RECENT_POSTS],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_INFINITE_POSTS],
       });
     },
   });
