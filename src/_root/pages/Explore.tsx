@@ -23,11 +23,46 @@ const SearchResults = ({ isSearchFetching, searchedPosts }: SearchResultProps) =
   }
 };
 
+const FILTER_OPTIONS = [
+  { label: "All", value: "all" },
+  { label: "Newest", value: "newest" },
+  { label: "Oldest", value: "oldest" },
+  { label: "Most Liked", value: "mostLiked" },
+];
+
+const sortPosts = (posts: any[], filter: string) => {
+  const postsCopy = [...posts];
+  switch (filter) {
+    case "newest":
+      return postsCopy.sort(
+        (a, b) =>
+          new Date(b.$createdAt).getTime() - new Date(a.$createdAt).getTime()
+      );
+    case "oldest":
+      return postsCopy.sort(
+        (a, b) =>
+          new Date(a.$createdAt).getTime() - new Date(b.$createdAt).getTime()
+      );
+    case "mostLiked":
+      return postsCopy.sort(
+        (a, b) =>
+          (b.likes?.length || 0) - (a.likes?.length || 0)
+      );
+    case "all":
+    default:
+      return postsCopy.sort(
+        (a, b) =>
+          new Date(b.$updatedAt).getTime() - new Date(a.$updatedAt).getTime()
+      );
+  }
+};
+
 const Explore = () => {
   const { ref, inView } = useInView();
   const { data: posts, fetchNextPage, hasNextPage } = useGetPosts();
 
   const [searchValue, setSearchValue] = useState("");
+  const [activeFilter, setActiveFilter] = useState("all");
   const debouncedSearch = useDebounce(searchValue, 500);
   const { data: searchedPosts, isFetching: isSearchFetching } = useSearchPosts(debouncedSearch);
 
@@ -46,7 +81,8 @@ const Explore = () => {
 
   const shouldShowSearchResults = searchValue !== "";
   const allPosts = posts?.pages.flatMap((page) => page.documents) || [];
-  const shouldShowPosts = !shouldShowSearchResults && allPosts.length === 0;
+  const sortedPosts = sortPosts(allPosts, activeFilter);
+  const shouldShowPosts = !shouldShowSearchResults && sortedPosts.length === 0;
 
   return (
     <div className="explore-container">
@@ -72,17 +108,23 @@ const Explore = () => {
         </div>
       </div>
 
-      <div className="flex-between w-full max-w-5xl mt-16 mb-7">
+      <div className="flex-between w-full max-w-5xl mt-16 mb-7 flex-wrap gap-4">
         <h3 className="body-bold md:h3-bold">Popular</h3>
 
-        <div className="flex-center gap-3 bg-dark-3 rounded-xl px-4 py-2 cursor-pointer">
-          <p className="small-medium md:base-medium text-light-2">All</p>
-          <img
-            src="/assets/icons/filter.svg"
-            width={20}
-            height={20}
-            alt="filter"
-          />
+        <div className="flex flex-wrap gap-2 bg-dark-3 rounded-xl px-4 py-2 cursor-pointer">
+          {FILTER_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              onClick={() => setActiveFilter(option.value)}
+              className={`px-3 py-1 rounded-lg text-sm transition ${
+                activeFilter === option.value
+                  ? "bg-primary-500 text-light-1"
+                  : "text-light-2 hover:text-light-1"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -95,9 +137,7 @@ const Explore = () => {
         ) : shouldShowPosts ? (
           <p className="text-light-4 mt-10 text-center w-full">End of posts</p>
         ) : (
-          posts.pages.map((item, index) => (
-            <GridPostList key={`page-${index}`} posts={item?.documents || []} />
-          ))
+          <GridPostList posts={sortedPosts} />
         )}
       </div>
 

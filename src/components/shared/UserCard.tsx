@@ -102,7 +102,7 @@ const UserCard = ({ user }: UserCardProps) => {
       <Button
         type="button"
         size="sm"
-        className="shad-button_primary px-5"
+        className="shad-button_primary px-5 transition-transform duration-150 active:scale-95 disabled:active:scale-100"
         onClick={handleFollow}
         disabled={isCheckingFollow || user.$id === currentUser.id}
       >

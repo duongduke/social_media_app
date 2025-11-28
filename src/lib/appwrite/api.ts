@@ -402,17 +402,37 @@ async function enrichSavesWithPosts(documents: Models.Document[]) {
 // ============================== GET POSTS
 export async function searchPosts(searchTerm: string) {
   try {
-    const posts = await databases.listDocuments(
+    const postsResponse = await databases.listDocuments(
       appwriteConfig.databaseId,
       appwriteConfig.postCollectionId,
-      [Query.search("caption", searchTerm)]
+      [Query.orderDesc("$createdAt"), Query.limit(200)]
     );
 
-    if (!posts) throw Error;
+    if (!postsResponse) throw Error;
 
-    const documents = await enrichPostsWithCreators(posts.documents);
+    const normalizedSearch = searchTerm.toLowerCase().trim();
 
-    return { ...posts, documents };
+    const filteredPosts = postsResponse.documents.filter((post) => {
+      const caption = (post.caption || "").toLowerCase();
+
+      let creatorName = "";
+      let creatorUsername = "";
+
+      if (typeof post.creator === "object" && post.creator !== null) {
+        creatorName = (post.creator.name || "").toLowerCase();
+        creatorUsername = (post.creator.username || "").toLowerCase();
+      }
+
+      return (
+        caption.includes(normalizedSearch) ||
+        creatorName.includes(normalizedSearch) ||
+        creatorUsername.includes(normalizedSearch)
+      );
+    });
+
+    const documents = await enrichPostsWithCreators(filteredPosts);
+
+    return { documents };
   } catch (error) {
     console.log(error);
   }
@@ -917,18 +937,49 @@ export async function getLikedPosts(userId: string) {
 // ============================================================
 
 // ============================== GET USERS
-export async function getUsers(limit?: number) {
-  const queries: any[] = [Query.orderDesc("$createdAt")];
-
-  if (limit) {
-    queries.push(Query.limit(limit));
-  }
+export async function getUsers(params?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+}) {
+  const { page = 1, limit = 9, search = "" } = params ?? {};
+  const offset = (page - 1) * limit;
 
   try {
+    // Nếu có search term, lấy nhiều user rồi filter thủ công để tránh yêu cầu fulltext index
+    if (search) {
+      const searchResponse = await databases.listDocuments(
+        appwriteConfig.databaseId,
+        appwriteConfig.userCollectionId,
+        [Query.orderDesc("$createdAt"), Query.limit(200)]
+      );
+
+      const normalizedSearch = search.toLowerCase();
+      const filteredUsers =
+        searchResponse?.documents.filter((user: Models.Document) => {
+          const name = (user.name || "").toLowerCase();
+          const username = (user.username || "").toLowerCase();
+          return (
+            name.includes(normalizedSearch) || username.includes(normalizedSearch)
+          );
+        }) ?? [];
+
+      const paginatedUsers = filteredUsers.slice(offset, offset + limit);
+
+      return {
+        total: filteredUsers.length,
+        documents: paginatedUsers,
+      };
+    }
+
     const users = await databases.listDocuments(
       appwriteConfig.databaseId,
       appwriteConfig.userCollectionId,
-      queries
+      [
+        Query.orderDesc("$createdAt"),
+        Query.limit(limit),
+        Query.offset(offset),
+      ]
     );
 
     if (!users) {

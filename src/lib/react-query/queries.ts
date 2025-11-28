@@ -334,10 +334,24 @@ export const useGetCurrentUser = () => {
   });
 };
 
-export const useGetUsers = (limit?: number) => {
+type UseGetUsersParams = {
+  page?: number;
+  limit?: number;
+  searchTerm?: string;
+  enabled?: boolean;
+};
+
+export const useGetUsers = ({
+  page = 1,
+  limit = 9,
+  searchTerm = "",
+  enabled = true,
+}: UseGetUsersParams = {}) => {
   return useQuery({
-    queryKey: [QUERY_KEYS.GET_USERS],
-    queryFn: () => getUsers(limit),
+    queryKey: [QUERY_KEYS.GET_USERS, page, limit, searchTerm],
+    queryFn: () => getUsers({ page, limit, search: searchTerm }),
+    keepPreviousData: true,
+    enabled,
   });
 };
 
