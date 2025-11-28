@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui";
@@ -16,6 +17,7 @@ const PostDetails = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { user } = useUserContext();
+  const [activeMediaIndex, setActiveMediaIndex] = useState(0);
 
   const { data: post, isLoading } = useGetPostById(id);
   const { data: userPosts, isLoading: isUserPostLoading } = useGetUserPosts(
@@ -27,8 +29,22 @@ const PostDetails = () => {
     (userPost) => userPost.$id !== id
   );
 
+  const mediaUrls =
+    post?.imageUrls?.length > 0
+      ? post.imageUrls
+      : post?.imageUrl
+      ? [post.imageUrl]
+      : [];
+
+  useEffect(() => {
+    setActiveMediaIndex(0);
+  }, [post?.$id]);
+
   const handleDeletePost = () => {
-    deletePost({ postId: id, imageId: post?.imageId });
+    deletePost({
+      postId: id,
+      imageIds: post?.imageIds || (post?.imageId ? [post.imageId] : []),
+    });
     navigate(-1);
   };
 
@@ -57,11 +73,37 @@ const PostDetails = () => {
         </div>
       ) : (
         <div className="post_details-card">
-          <img
-            src={post?.imageUrl}
-            alt="creator"
-            className="post_details-img"
-          />
+          <div className="post_details-media">
+            {mediaUrls.length > 0 && (
+              <img
+                src={mediaUrls[activeMediaIndex]}
+                alt="post media"
+                className="post_details-img"
+              />
+            )}
+            {mediaUrls.length > 1 && (
+              <div className="flex gap-3 overflow-x-auto custom-scrollbar">
+                {mediaUrls.map((url, index) => (
+                  <button
+                    key={`${url}-${index}`}
+                    type="button"
+                    onClick={() => setActiveMediaIndex(index)}
+                    className={`w-20 h-20 rounded-lg border ${
+                      activeMediaIndex === index
+                        ? "border-primary-500"
+                        : "border-dark-4"
+                    }`}
+                  >
+                    <img
+                      src={url}
+                      alt={`thumb-${index}`}
+                      className="object-cover w-full h-full rounded-lg"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           <div className="post_details-info">
             <div className="flex-between w-full">
@@ -124,15 +166,17 @@ const PostDetails = () => {
 
             <div className="flex flex-col flex-1 w-full small-medium lg:base-regular">
               <p>{post?.caption}</p>
-              <ul className="flex gap-1 mt-2">
-                {post?.tags.map((tag: string, index: string) => (
-                  <li
-                    key={`${tag}${index}`}
-                    className="text-light-3 small-regular">
-                    #{tag}
-                  </li>
-                ))}
-              </ul>
+              {post?.tags && (
+                <ul className="flex gap-1 mt-2">
+                  {post.tags.map((tag: string, index: string) => (
+                    <li
+                      key={`${tag}${index}`}
+                      className="text-light-3 small-regular">
+                      #{tag}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             <div className="w-full">

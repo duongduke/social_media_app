@@ -36,7 +36,7 @@ const PostForm = ({ post, action }: PostFormProps) => {
       caption: post ? post?.caption : "",
       file: [],
       location: post ? post.location : "",
-      tags: post ? post.tags.join(",") : "",
+      tags: post?.tags ? post.tags.join(",") : "",
     },
   });
 
@@ -53,8 +53,8 @@ const PostForm = ({ post, action }: PostFormProps) => {
       const updatedPost = await updatePost({
         ...value,
         postId: post.$id,
-        imageId: post.imageId,
-        imageUrl: post.imageUrl,
+        imageIds: post.imageIds || (post.imageId ? [post.imageId] : []),
+        imageUrls: post.imageUrls || (post.imageUrl ? [post.imageUrl] : []),
       });
 
       if (!updatedPost) {
@@ -110,7 +110,13 @@ const PostForm = ({ post, action }: PostFormProps) => {
               <FormControl>
                 <FileUploader
                   fieldChange={field.onChange}
-                  mediaUrl={post?.imageUrl}
+                  mediaUrls={
+                    post?.imageUrls?.length
+                      ? post.imageUrls
+                      : post?.imageUrl
+                      ? [post.imageUrl]
+                      : []
+                  }
                 />
               </FormControl>
               <FormMessage className="shad-form_message" />

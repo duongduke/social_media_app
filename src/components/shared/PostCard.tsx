@@ -14,6 +14,15 @@ const PostCard = ({ post }: PostCardProps) => {
 
   if (!post.creator) return;
 
+  const mediaUrls =
+    post.imageUrls?.length > 0
+      ? post.imageUrls
+      : post.imageUrl
+      ? [post.imageUrl]
+      : [];
+  const mainImage =
+    mediaUrls[0] || "/assets/icons/profile-placeholder.svg";
+
   return (
     <div className="post-card">
       <div className="flex-between">
@@ -60,20 +69,31 @@ const PostCard = ({ post }: PostCardProps) => {
       <Link to={`/posts/${post.$id}`}>
         <div className="small-medium lg:base-medium py-5">
           <p>{post.caption}</p>
-          <ul className="flex gap-1 mt-2">
-            {post.tags.map((tag: string, index: string) => (
-              <li key={`${tag}${index}`} className="text-light-3 small-regular">
-                #{tag}
-              </li>
-            ))}
-          </ul>
+          {post.tags && (
+            <ul className="flex gap-1 mt-2">
+              {post.tags.map((tag: string, index: string) => (
+                <li
+                  key={`${tag}${index}`}
+                  className="text-light-3 small-regular">
+                  #{tag}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
-        <img
-          src={post.imageUrl || "/assets/icons/profile-placeholder.svg"}
-          alt="post image"
-          className="post-card_img"
-        />
+        <div className="relative">
+          <img
+            src={mainImage}
+            alt="post image"
+            className="post-card_img"
+          />
+          {mediaUrls.length > 1 && (
+            <span className="absolute top-3 right-3 bg-dark-3/70 text-light-1 text-xs px-2 py-1 rounded-full">
+              {mediaUrls.length} photos
+            </span>
+          )}
+        </div>
       </Link>
 
       <PostStats post={post} userId={user.id} />
