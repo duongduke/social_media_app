@@ -301,8 +301,6 @@ export const useGetCurrentUser = () => {
     refetchOnWindowFocus: false,
     // Chỉ chạy query khi có session
     enabled: !!hasSession,
-    // Không throw error, chỉ set error state
-    throwOnError: false,
   });
 };
 

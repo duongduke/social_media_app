@@ -19,7 +19,7 @@ const PostStats = ({ post, userId }: PostStatsProps) => {
   const location = useLocation();
   // Xử lý trường hợp post.likes có thể là undefined hoặc không phải array
   const likesList = Array.isArray(post.likes) 
-    ? post.likes.map((user: Models.Document) => user.$id)
+    ? post.likes.map((user: Models.Document) => user?.$id).filter(Boolean)
     : [];
 
   const [likes, setLikes] = useState<string[]>(likesList);
@@ -33,7 +33,7 @@ const PostStats = ({ post, userId }: PostStatsProps) => {
 
   // Xử lý trường hợp currentUser hoặc currentUser.save có thể là undefined
   const savedPostRecord = currentUser?.save?.find(
-    (record: Models.Document) => record.post.$id === post.$id
+    (record: Models.Document) => record.post?.$id === post.$id
   );
 
   useEffect(() => {
@@ -43,7 +43,7 @@ const PostStats = ({ post, userId }: PostStatsProps) => {
   // Cập nhật likes khi post.likes thay đổi
   useEffect(() => {
     if (Array.isArray(post.likes)) {
-      const newLikesList = post.likes.map((user: Models.Document) => user.$id);
+      const newLikesList = post.likes.map((user: Models.Document) => user?.$id).filter(Boolean);
       setLikes(newLikesList);
     }
   }, [post.likes]);

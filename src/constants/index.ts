@@ -20,7 +20,7 @@ export const sidebarLinks = [
     label: "Saved",
   },
   {
-    imgURL: "/assets/icons/instagram-post.svg",
+    imgURL: "/assets/icons/gallery-add.svg",
     route: "/create-post",
     label: "Create Post",
   },
@@ -43,7 +43,7 @@ export const bottombarLinks = [
     label: "Saved",
   },
   {
-    imgURL: "/assets/icons/instagram-post.svg",
+    imgURL: "/assets/icons/gallery-add.svg",
     route: "/create-post",
     label: "Create",
   },

@@ -7,13 +7,13 @@ const Saved = () => {
   const { data: currentUser } = useGetCurrentUser();
 
   const savePosts = currentUser?.save
-    .map((savePost: Models.Document) => ({
+    ?.map((savePost: Models.Document) => ({
       ...savePost.post,
       creator: {
         imageUrl: currentUser.imageUrl,
       },
     }))
-    .reverse();
+    .reverse() || [];
 
   return (
     <div className="saved-container">
