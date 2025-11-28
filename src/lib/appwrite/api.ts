@@ -1,4 +1,4 @@
-import { ID, Query } from "appwrite";
+import { ID, Query, Models } from "appwrite";
 
 import { appwriteConfig, account, databases, storage, avatars } from "./config";
 import { IUpdatePost, INewPost, INewUser, IUpdateUser } from "@/types";
@@ -150,11 +150,21 @@ export async function getCurrentUser() {
       [Query.equal("accountId", currentAccount.$id)]
     );
 
-    if (!currentUser || currentUser.documents.length === 0) {
-      return null;
-    }
+  if (!currentUser || currentUser.documents.length === 0) {
+    return null;
+  }
 
-    return currentUser.documents[0];
+  const user = currentUser.documents[0];
+
+  const savedPosts = await databases.listDocuments(
+    appwriteConfig.databaseId,
+    appwriteConfig.savesCollectionId,
+    [Query.equal("user", user.$id)]
+  );
+
+  const enrichedSaves = await enrichSavesWithPosts(savedPosts?.documents ?? []);
+
+  return { ...user, save: enrichedSaves };
   } catch (error) {
     console.log(error);
     return null;
@@ -265,6 +275,130 @@ export async function deleteFile(fileId: string) {
   }
 }
 
+// ============================== HELPERS: ENRICH POSTS WITH CREATOR DATA
+async function enrichPostsWithCreators(documents: Models.Document[]) {
+  try {
+    const creatorIds = Array.from(
+      new Set(
+        documents
+          .map((post) => {
+            if (typeof post.creator === "string") {
+              return post.creator;
+            }
+
+            if (post.creator && typeof post.creator === "object") {
+              return post.creator.$id;
+            }
+
+            return null;
+          })
+          .filter(
+            (id): id is string =>
+              typeof id === "string" && id !== "undefined" && id !== "null"
+          )
+      )
+    );
+
+    if (!creatorIds.length) {
+      return documents;
+    }
+
+    const creatorsResponse = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.userCollectionId,
+      [Query.equal("$id", creatorIds)]
+    );
+
+    const creatorsMap =
+      creatorsResponse?.documents.reduce(
+        (acc, creator) => {
+          acc[creator.$id] = creator;
+          return acc;
+        },
+        {} as Record<string, Models.Document>
+      ) ?? {};
+
+    return documents.map((post) => {
+      if (typeof post.creator === "string" && creatorsMap[post.creator]) {
+        return { ...post, creator: creatorsMap[post.creator] };
+      }
+      return post;
+    });
+  } catch (error) {
+    console.error("Lỗi khi gắn creator vào post:", error);
+    return documents;
+  }
+}
+
+async function enrichSavesWithPosts(documents: Models.Document[]) {
+  if (!documents.length) return documents;
+
+  try {
+    const postIds = Array.from(
+      new Set(
+        documents
+          .map((save) => {
+            if (typeof save.post === "string") {
+              return save.post;
+            }
+
+            if (save.post && typeof save.post === "object") {
+              return (save.post as Models.Document).$id;
+            }
+
+            return null;
+          })
+          .filter(
+            (id): id is string =>
+              typeof id === "string" && id !== "undefined" && id !== "null"
+          )
+      )
+    );
+
+    if (!postIds.length) {
+      return documents;
+    }
+
+    const postsResponse = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.postCollectionId,
+      [Query.equal("$id", postIds)]
+    );
+
+    const enrichedPosts = await enrichPostsWithCreators(
+      postsResponse?.documents ?? []
+    );
+
+    const postsMap = enrichedPosts.reduce(
+      (acc, post) => {
+        acc[post.$id] = post;
+        return acc;
+      },
+      {} as Record<string, Models.Document>
+    );
+
+    return documents.map((save) => {
+      if (typeof save.post === "string" && postsMap[save.post]) {
+        return { ...save, post: postsMap[save.post] };
+      }
+
+      const postId =
+        save.post && typeof save.post === "object"
+          ? (save.post as Models.Document).$id
+          : null;
+
+      if (postId && postsMap[postId]) {
+        return { ...save, post: postsMap[postId] };
+      }
+
+      return save;
+    });
+  } catch (error) {
+    console.error("Lỗi khi gắn post vào save:", error);
+    return documents;
+  }
+}
+
 // ============================== GET POSTS
 export async function searchPosts(searchTerm: string) {
   try {
@@ -276,7 +410,9 @@ export async function searchPosts(searchTerm: string) {
 
     if (!posts) throw Error;
 
-    return posts;
+    const documents = await enrichPostsWithCreators(posts.documents);
+
+    return { ...posts, documents };
   } catch (error) {
     console.log(error);
   }
@@ -298,7 +434,9 @@ export async function getInfinitePosts({ pageParam }: { pageParam: number }) {
 
     if (!posts) throw Error;
 
-    return posts;
+    const documents = await enrichPostsWithCreators(posts.documents);
+
+    return { ...posts, documents };
   } catch (error) {
     console.log(error);
   }
@@ -317,7 +455,9 @@ export async function getPostById(postId?: string) {
 
     if (!post) throw Error;
 
-    return post;
+    const [enrichedPost] = await enrichPostsWithCreators([post]);
+
+    return enrichedPost;
   } catch (error) {
     console.log(error);
   }
@@ -615,7 +755,9 @@ export async function getUserPosts(userId?: string) {
 
     if (!post) throw Error;
 
-    return post;
+    const documents = await enrichPostsWithCreators(post.documents);
+
+    return { ...post, documents };
   } catch (error) {
     console.log(error);
   }
@@ -632,7 +774,9 @@ export async function getRecentPosts() {
 
     if (!posts) throw Error;
 
-    return posts;
+    const documents = await enrichPostsWithCreators(posts.documents);
+
+    return { ...posts, documents };
   } catch (error) {
     console.log(error);
   }

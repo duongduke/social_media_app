@@ -7,12 +7,11 @@ const Saved = () => {
   const { data: currentUser } = useGetCurrentUser();
 
   const savePosts = currentUser?.save
-    ?.map((savePost: Models.Document) => ({
-      ...savePost.post,
-      creator: {
-        imageUrl: currentUser.imageUrl,
-      },
-    }))
+    ?.map((savePost: Models.Document | null) => {
+      const savedPost = savePost?.post as Models.Document | null | undefined;
+      return savedPost ?? null;
+    })
+    .filter((post): post is Models.Document => post !== null)
     .reverse();
 
   return (
