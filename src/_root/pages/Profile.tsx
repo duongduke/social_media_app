@@ -11,17 +11,21 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui";
 import { LikedPosts } from "@/_root/pages";
 import { useUserContext } from "@/context/AuthContext";
-import { useGetUserById, useGetUserPosts, useFollowUser, useUnfollowUser, useGetFollowersCount, useGetFollowingCount } from "@/lib/react-query/queries";
+import { useGetUserById, useGetUserPosts, useFollowUser, useUnfollowUser, useGetFollowersCount, useGetFollowingCount, useGetFollowersList, useGetFollowingList } from "@/lib/react-query/queries";
 import { getFollowRecord } from "@/lib/appwrite/api";
 import { GridPostList, Loader } from "@/components/shared";
 
-interface StabBlockProps {
+interface StatBlockProps {
   value: string | number;
   label: string;
+  onClick?: () => void;
 }
 
-const StatBlock = ({ value, label }: StabBlockProps) => (
-  <div className="flex-center gap-2">
+const StatBlock = ({ value, label, onClick }: StatBlockProps) => (
+  <div
+    className={`flex-center gap-2 ${onClick ? "cursor-pointer hover:text-primary-500 transition" : ""}`}
+    onClick={onClick}
+  >
     <p className="small-semibold lg:body-bold text-primary-500">{value}</p>
     <p className="small-medium lg:base-medium text-light-2">{label}</p>
   </div>
@@ -38,9 +42,12 @@ const Profile = () => {
   const { mutate: unfollow } = useUnfollowUser();
   const { data: followersCount = 0 } = useGetFollowersCount(id || "");
   const { data: followingCount = 0 } = useGetFollowingCount(id || "");
+  const { data: followersList = [], isLoading: isFollowersListLoading } = useGetFollowersList(id || "");
+  const { data: followingList = [], isLoading: isFollowingListLoading } = useGetFollowingList(id || "");
 
   const [isFollowing, setIsFollowing] = useState(false);
   const [isCheckingFollow, setIsCheckingFollow] = useState(true);
+  const [followModalType, setFollowModalType] = useState<"followers" | "following" | null>(null);
 
   // Kiểm tra xem đã follow chưa
   useEffect(() => {
@@ -132,8 +139,16 @@ const Profile = () => {
 
             <div className="flex gap-8 mt-10 items-center justify-center xl:justify-start flex-wrap z-20">
               <StatBlock value={userPosts?.documents?.length || 0} label="Posts" />
-              <StatBlock value={followersCount} label="Followers" />
-              <StatBlock value={followingCount} label="Following" />
+              <StatBlock
+                value={followersCount}
+                label="Followers"
+                onClick={() => setFollowModalType("followers")}
+              />
+              <StatBlock
+                value={followingCount}
+                label="Following"
+                onClick={() => setFollowModalType("following")}
+              />
             </div>
 
             <p className="small-medium md:base-medium text-center xl:text-left mt-7 max-w-screen-sm">
@@ -214,6 +229,59 @@ const Profile = () => {
         )}
       </Routes>
       <Outlet />
+
+      {followModalType && (
+        <div className="fixed inset-0 bg-black/70 flex-center z-50 px-4">
+          <div className="bg-dark-3 rounded-2xl w-full max-w-md p-6 max-h-[80vh] flex flex-col">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="h3-bold">
+                {followModalType === "followers" ? "Followers" : "Following"}
+              </h3>
+              <button
+                onClick={() => setFollowModalType(null)}
+                className="text-light-3 hover:text-light-1 transition"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto custom-scrollbar">
+              {(followModalType === "followers" && isFollowersListLoading) ||
+              (followModalType === "following" && isFollowingListLoading) ? (
+                <div className="flex-center py-10">
+                  <Loader />
+                </div>
+              ) : (
+                <ul className="flex flex-col gap-4">
+                  {(followModalType === "followers" ? followersList : followingList).length === 0 ? (
+                    <p className="text-light-4 text-center py-6">No users found.</p>
+                  ) : (
+                    (followModalType === "followers" ? followersList : followingList).map((followUser) => (
+                      <li key={followUser.$id}>
+                        <Link
+                          to={`/profile/${followUser.$id}`}
+                          className="flex items-center gap-3 hover:bg-dark-4 rounded-xl p-3 transition"
+                          onClick={() => setFollowModalType(null)}
+                        >
+                          <img
+                            src={followUser.imageUrl || "/assets/icons/profile-placeholder.svg"}
+                            alt={followUser.name}
+                            className="w-12 h-12 rounded-full object-cover"
+                          />
+                          <div className="flex flex-col">
+                            <p className="body-semibold">{followUser.name}</p>
+                            <span className="text-light-3 text-sm">@{followUser.username}</span>
+                          </div>
+                        </Link>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

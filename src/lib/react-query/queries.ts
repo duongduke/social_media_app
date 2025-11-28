@@ -29,6 +29,9 @@ import {
   unfollowUser,
   getFollowersCount,
   getFollowingCount,
+  getLikedPosts,
+  getFollowersList,
+  getFollowingList,
 } from "@/lib/appwrite/api";
 import { INewPost, INewUser, IUpdatePost, IUpdateUser } from "@/types";
 
@@ -119,6 +122,14 @@ export const useGetUserPosts = (userId?: string) => {
   });
 };
 
+export const useGetLikedPosts = (userId?: string) => {
+  return useQuery({
+    queryKey: [QUERY_KEYS.GET_LIKED_POSTS, userId],
+    queryFn: () => getLikedPosts(userId || ""),
+    enabled: !!userId,
+  });
+};
+
 export const useUpdatePost = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -166,6 +177,9 @@ export const useLikePost = () => {
       });
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.GET_CURRENT_USER],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_LIKED_POSTS],
       });
     },
   });
@@ -273,6 +287,22 @@ export const useGetFollowingCount = (userId: string) => {
     queryKey: [QUERY_KEYS.GET_FOLLOWING_COUNT, userId],
     queryFn: () => getFollowingCount(userId),
     enabled: !!userId,
+  });
+};
+
+export const useGetFollowersList = (userId: string, enabled = true) => {
+  return useQuery({
+    queryKey: [QUERY_KEYS.GET_FOLLOWERS_LIST, userId],
+    queryFn: () => getFollowersList(userId),
+    enabled: !!userId && enabled,
+  });
+};
+
+export const useGetFollowingList = (userId: string, enabled = true) => {
+  return useQuery({
+    queryKey: [QUERY_KEYS.GET_FOLLOWING_LIST, userId],
+    queryFn: () => getFollowingList(userId),
+    enabled: !!userId && enabled,
   });
 };
 

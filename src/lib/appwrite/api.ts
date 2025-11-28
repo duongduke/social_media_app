@@ -782,6 +782,136 @@ export async function getRecentPosts() {
   }
 }
 
+// ============================== GET FOLLOWERS LIST
+export async function getFollowersList(userId: string) {
+  if (!userId) return [];
+
+  try {
+    const followersRecords = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      "follows",
+      [Query.equal("following", userId)]
+    );
+
+    if (!followersRecords || followersRecords.documents.length === 0) {
+      return [];
+    }
+
+    const followerIds = followersRecords.documents
+      .map((record) => {
+        if (typeof record.follower === "string") return record.follower;
+        if (
+          record.follower &&
+          typeof record.follower === "object" &&
+          "$id" in record.follower
+        ) {
+          return record.follower.$id as string;
+        }
+        return null;
+      })
+      .filter((id): id is string => !!id);
+
+    if (followerIds.length === 0) {
+      return [];
+    }
+
+    const followers = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.userCollectionId,
+      [Query.equal("$id", followerIds)]
+    );
+
+    return followers?.documents ?? [];
+  } catch (error: any) {
+    if (error?.code !== 404) {
+      console.error("Lỗi khi lấy danh sách followers:", error);
+    }
+    return [];
+  }
+}
+
+// ============================== GET FOLLOWING LIST
+export async function getFollowingList(userId: string) {
+  if (!userId) return [];
+
+  try {
+    const followingRecords = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      "follows",
+      [Query.equal("follower", userId)]
+    );
+
+    if (!followingRecords || followingRecords.documents.length === 0) {
+      return [];
+    }
+
+    const followingIds = followingRecords.documents
+      .map((record) => {
+        if (typeof record.following === "string") return record.following;
+        if (
+          record.following &&
+          typeof record.following === "object" &&
+          "$id" in record.following
+        ) {
+          return record.following.$id as string;
+        }
+        return null;
+      })
+      .filter((id): id is string => !!id);
+
+    if (followingIds.length === 0) {
+      return [];
+    }
+
+    const following = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.userCollectionId,
+      [Query.equal("$id", followingIds)]
+    );
+
+    return following?.documents ?? [];
+  } catch (error: any) {
+    if (error?.code !== 404) {
+      console.error("Lỗi khi lấy danh sách following:", error);
+    }
+    return [];
+  }
+}
+
+// ============================== GET LIKED POSTS
+export async function getLikedPosts(userId: string) {
+  if (!userId) return { documents: [] };
+
+  try {
+    // Lấy tất cả posts
+    const allPosts = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.postCollectionId,
+      [Query.orderDesc("$createdAt")]
+    );
+
+    if (!allPosts) return { documents: [] };
+
+    // Filter các posts có userId trong likes array
+    const likedPosts = allPosts.documents.filter((post) => {
+      if (!Array.isArray(post.likes)) return false;
+      return post.likes.some((like: any) => {
+        if (typeof like === "string") return like === userId;
+        if (typeof like === "object" && like?.$id) return like.$id === userId;
+        return false;
+      });
+    });
+
+    // Enrich với creator data
+    const enrichedPosts = await enrichPostsWithCreators(likedPosts);
+
+    return { documents: enrichedPosts };
+  } catch (error) {
+    console.error("Lỗi khi lấy liked posts:", error);
+    return { documents: [] };
+  }
+}
+
 // ============================================================
 // USER
 // ============================================================
