@@ -95,8 +95,27 @@ export async function signInAccount(user: { email: string; password: string }) {
     const session = await account.createEmailSession(user.email, user.password);
 
     return session;
-  } catch (error) {
-    console.log(error);
+  } catch (error: any) {
+    console.error("Lỗi signInAccount:", error);
+
+    // Appwrite: "Creation of a session is prohibited when a session is active."
+    // Nghĩa là đã có session hiện tại -> coi như đăng nhập thành công
+    if (
+      typeof error?.message === "string" &&
+      error.message.includes("Creation of a session is prohibited when a session is active")
+    ) {
+      try {
+        const currentAccount = await getAccount();
+        // Trả về bất cứ giá trị truthy nào để SigninForm coi là thành công
+        return currentAccount || { status: "already_active_session" };
+      } catch (innerError) {
+        console.error("Lỗi khi lấy current account sau khi phát hiện session active:", innerError);
+        return { status: "already_active_session" };
+      }
+    }
+
+    // Các lỗi khác (sai email/password, v.v.) -> trả null để form hiển thị toast thất bại
+    return null;
   }
 }
 
@@ -638,28 +657,51 @@ export async function getUsers(limit?: number) {
       queries
     );
 
-    if (!users) throw Error;
+    if (!users) {
+      throw new Error("Không lấy được danh sách users");
+    }
 
     return users;
-  } catch (error) {
-    console.log(error);
+  } catch (error: any) {
+    console.error("Lỗi getUsers:", error);
+
+    // Ném lỗi rõ ràng cho React Query, tránh trả về undefined
+    if (error?.code === 401 || error?.type === "general_unauthorized_scope") {
+      throw new Error(
+        "Không có quyền xem danh sách users. Vui lòng kiểm tra lại Appwrite (Project ID, Database ID, Collection ID, Permissions)."
+      );
+    }
+
+    // Nếu Appwrite trả lỗi khác, ném lại để React Query set isError
+    if (error?.message) {
+      throw error;
+    }
+
+    throw new Error("Đã xảy ra lỗi khi lấy danh sách users");
   }
 }
 
 // ============================== GET USER BY ID
 export async function getUserById(userId: string) {
   try {
+    if (!userId || userId === "undefined" || userId === "null") {
+      throw new Error("userId không hợp lệ khi getUserById");
+    }
+
     const user = await databases.getDocument(
       appwriteConfig.databaseId,
       appwriteConfig.userCollectionId,
       userId
     );
 
-    if (!user) throw Error;
+    if (!user) {
+      throw new Error("Không tìm thấy user với ID đã cung cấp");
+    }
 
     return user;
-  } catch (error) {
-    console.log(error);
+  } catch (error: any) {
+    console.error("Lỗi getUserById:", error);
+    throw error;
   }
 }
 

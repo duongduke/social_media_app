@@ -314,10 +314,13 @@ export const useGetUsers = (limit?: number) => {
 };
 
 export const useGetUserById = (userId: string) => {
+  const isValidId =
+    !!userId && userId !== "undefined" && userId !== "null";
+
   return useQuery({
     queryKey: [QUERY_KEYS.GET_USER_BY_ID, userId],
     queryFn: () => getUserById(userId),
-    enabled: !!userId,
+    enabled: isValidId,
   });
 };
 

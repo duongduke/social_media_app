@@ -17,9 +17,21 @@ type PostStatsProps = {
 
 const PostStats = ({ post, userId }: PostStatsProps) => {
   const location = useLocation();
-  // Xử lý trường hợp post.likes có thể là undefined hoặc không phải array
-  const likesList = Array.isArray(post.likes) 
-    ? post.likes.map((user: Models.Document) => user.$id)
+  // Xử lý trường hợp post.likes có thể:
+  // - undefined
+  // - mảng string (id user)
+  // - mảng document (có $id)
+  const likesList: string[] = Array.isArray(post.likes)
+    ? (post.likes as any[])
+        .filter((item) => item !== null && item !== undefined)
+        .map((item) => {
+          if (typeof item === "string") return item;
+          if (typeof item === "object" && "$id" in item) {
+            return (item as Models.Document).$id;
+          }
+          return "";
+        })
+        .filter((id) => id !== "")
     : [];
 
   const [likes, setLikes] = useState<string[]>(likesList);
@@ -31,10 +43,11 @@ const PostStats = ({ post, userId }: PostStatsProps) => {
 
   const { data: currentUser } = useGetCurrentUser();
 
-  // Xử lý trường hợp currentUser hoặc currentUser.save có thể là undefined
-  const savedPostRecord = currentUser?.save?.find(
-    (record: Models.Document) => record.post.$id === post.$id
-  );
+  // Xử lý trường hợp currentUser hoặc currentUser.save/post có thể là undefined/null
+  const savedPostRecord = currentUser?.save?.find((record: any) => {
+    const recordPost = record?.post as Models.Document | null | undefined;
+    return recordPost && recordPost.$id === post.$id;
+  });
 
   useEffect(() => {
     setIsSaved(!!savedPostRecord);
@@ -43,7 +56,16 @@ const PostStats = ({ post, userId }: PostStatsProps) => {
   // Cập nhật likes khi post.likes thay đổi
   useEffect(() => {
     if (Array.isArray(post.likes)) {
-      const newLikesList = post.likes.map((user: Models.Document) => user.$id);
+      const newLikesList: string[] = (post.likes as any[])
+        .filter((item) => item !== null && item !== undefined)
+        .map((item) => {
+          if (typeof item === "string") return item;
+          if (typeof item === "object" && "$id" in item) {
+            return (item as Models.Document).$id;
+          }
+          return "";
+        })
+        .filter((id) => id !== "");
       setLikes(newLikesList);
     }
   }, [post.likes]);
