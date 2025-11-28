@@ -24,3 +24,5 @@ dist-ssr
 *.sw?
 
 CHECK_ENV.md
+.env
+

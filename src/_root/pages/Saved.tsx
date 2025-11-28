@@ -9,10 +9,16 @@ const Saved = () => {
   const savePosts = currentUser?.save
     ?.map((savePost: Models.Document | null) => {
       const savedPost = savePost?.post as Models.Document | null | undefined;
-      return savedPost ?? null;
+      if (!savedPost) return null;
+      return {
+        ...savedPost,
+        creator: {
+          imageUrl: currentUser.imageUrl,
+        },
+      };
     })
     .filter((post): post is Models.Document => post !== null)
-    .reverse();
+    .reverse() || []
 
   return (
     <div className="saved-container">

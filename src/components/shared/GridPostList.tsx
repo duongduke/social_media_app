@@ -11,7 +11,7 @@ type GridPostListProps = {
 };
 
 const GridPostList = ({
-  posts,
+  posts = [],
   showUser = true,
   showStats = true,
 }: GridPostListProps) => {

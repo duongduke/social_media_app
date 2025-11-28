@@ -17,10 +17,10 @@ type PostStatsProps = {
 
 const PostStats = ({ post, userId }: PostStatsProps) => {
   const location = useLocation();
-  // Xử lý trường hợp post.likes có thể:
+  // Handle cases where post.likes can be:
   // - undefined
-  // - mảng string (id user)
-  // - mảng document (có $id)
+  // - array of strings (user id)
+  // - array of documents (with $id)
   const likesList: string[] = Array.isArray(post.likes)
     ? (post.likes as any[])
         .filter((item) => item !== null && item !== undefined)
