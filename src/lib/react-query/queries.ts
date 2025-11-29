@@ -36,6 +36,7 @@ import {
   getComments,
   createComment,
   deleteComment,
+  likeComment,
 } from "@/lib/appwrite/api";
 import { INewPost, INewUser, IUpdatePost, IUpdateUser } from "@/types";
 
@@ -418,11 +419,13 @@ export const useCreateComment = () => {
       postId,
       userId,
       content,
+      parentCommentId,
     }: {
       postId: string;
       userId: string;
       content: string;
-    }) => createComment({ postId, userId, content }),
+      parentCommentId?: string;
+    }) => createComment({ postId, userId, content, parentCommentId }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.GET_COMMENTS, variables.postId],
@@ -464,6 +467,26 @@ export const useDeleteComment = () => {
       });
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.GET_INFINITE_POSTS],
+      });
+    },
+  });
+};
+
+export const useLikeComment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      commentId,
+      likesArray,
+      postId,
+    }: {
+      commentId: string;
+      likesArray: string[];
+      postId: string;
+    }) => likeComment(commentId, likesArray),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GET_COMMENTS, variables.postId],
       });
     },
   });

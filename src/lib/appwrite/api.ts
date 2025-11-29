@@ -542,10 +542,12 @@ export async function createComment({
   postId,
   userId,
   content,
+  parentCommentId,
 }: {
   postId: string;
   userId: string;
   content: string;
+  parentCommentId?: string;
 }) {
   try {
     const newComment = await databases.createDocument(
@@ -556,6 +558,12 @@ export async function createComment({
         post: postId,
         user: userId,
         content,
+        // Field mới để hỗ trợ reply comment (Appwrite: attribute 'parentComment')
+        ...(parentCommentId
+          ? {
+              parentComment: parentCommentId,
+            }
+          : {}),
       }
     );
 
@@ -572,6 +580,25 @@ export async function createComment({
 
 export async function deleteComment(commentId: string) {
   try {
+    // Xoá toàn bộ reply của comment này (nếu có)
+    const replies = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.commentsCollectionId,
+      [Query.equal("parentComment", commentId)]
+    );
+
+    if (replies?.documents?.length) {
+      await Promise.all(
+        replies.documents.map((reply) =>
+          databases.deleteDocument(
+            appwriteConfig.databaseId,
+            appwriteConfig.commentsCollectionId,
+            reply.$id
+          )
+        )
+      );
+    }
+
     const statusCode = await databases.deleteDocument(
       appwriteConfig.databaseId,
       appwriteConfig.commentsCollectionId,
@@ -583,6 +610,30 @@ export async function deleteComment(commentId: string) {
     return { status: "Ok" };
   } catch (error) {
     console.error("Lỗi deleteComment:", error);
+    throw error;
+  }
+}
+
+// ============================== LIKE / UNLIKE COMMENT
+export async function likeComment(
+  commentId: string,
+  likesArray: string[]
+) {
+  try {
+    const updatedComment = await databases.updateDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.commentsCollectionId,
+      commentId,
+      {
+        likes: likesArray,
+      }
+    );
+
+    if (!updatedComment) throw Error;
+
+    return updatedComment;
+  } catch (error) {
+    console.error("Lỗi likeComment:", error);
     throw error;
   }
 }
