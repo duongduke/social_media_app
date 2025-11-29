@@ -2,7 +2,7 @@ import { Models } from "appwrite";
 
 // import { useToast } from "@/components/ui/use-toast";
 import { Loader, PostCard, UserCard } from "@/components/shared";
-import { useGetRecentPosts, useGetUsers } from "@/lib/react-query/queries";
+import { useGetRecentPosts, useGetTopCreators } from "@/lib/react-query/queries";
 
 const Home = () => {
   // const { toast } = useToast();
@@ -13,10 +13,10 @@ const Home = () => {
     isError: isErrorPosts,
   } = useGetRecentPosts();
   const {
-    data: creators,
+    data: topCreators,
     isLoading: isUserLoading,
     isError: isErrorCreators,
-  } = useGetUsers({ limit: 10 });
+  } = useGetTopCreators(5);
 
   if (isErrorPosts || isErrorCreators) {
     return (
@@ -52,15 +52,19 @@ const Home = () => {
 
       <div className="home-creators">
         <h3 className="h3-bold text-light-1">Top Creators</h3>
-        {isUserLoading && !creators ? (
+        {isUserLoading && !topCreators ? (
           <Loader />
         ) : (
           <ul className="flex flex-col gap-6">
-            {creators?.documents.map((creator) => (
-              <li key={creator?.$id}>
-                <UserCard user={creator} />
-              </li>
-            ))}
+            {topCreators && topCreators.length > 0 ? (
+              topCreators.map((creator: Models.Document) => (
+                <li key={creator?.$id}>
+                  <UserCard user={creator} />
+                </li>
+              ))
+            ) : (
+              <p className="text-light-4">No creators yet.</p>
+            )}
           </ul>
         )}
       </div>

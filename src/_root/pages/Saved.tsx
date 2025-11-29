@@ -10,15 +10,13 @@ const Saved = () => {
     ?.map((savePost: Models.Document | null) => {
       const savedPost = savePost?.post as Models.Document | null | undefined;
       if (!savedPost) return null;
-      return {
-        ...savedPost,
-        creator: {
-          imageUrl: currentUser.imageUrl,
-        },
-      };
+
+      // Post đã được enrich với creator trong getCurrentUser/enrichSavesWithPosts
+      // nên dùng trực tiếp để giữ nguyên thông tin creator
+      return savedPost;
     })
     .filter((post): post is Models.Document => post !== null)
-    .reverse() || []
+    .reverse() || [];
 
   return (
     <div className="saved-container">

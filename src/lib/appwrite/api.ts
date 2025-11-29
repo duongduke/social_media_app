@@ -1217,6 +1217,81 @@ export async function getUsers(params?: {
   }
 }
 
+// ============================== GET TOP CREATORS (BY FOLLOWERS COUNT)
+export async function getTopCreators(limit: number = 5) {
+  try {
+    // Lấy toàn bộ bản ghi follows (hoặc giới hạn đủ lớn)
+    const follows = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      "follows",
+      [Query.limit(10000)]
+    );
+
+    if (!follows || follows.documents.length === 0) {
+      // Nếu chưa có ai follow ai, fallback về danh sách user mới nhất
+      const users = await databases.listDocuments(
+        appwriteConfig.databaseId,
+        appwriteConfig.userCollectionId,
+        [Query.orderDesc("$createdAt"), Query.limit(limit)]
+      );
+      return users?.documents ?? [];
+    }
+
+    // Đếm số followers cho từng user (theo field "following")
+    const followerCountMap: Record<string, number> = {};
+
+    follows.documents.forEach((record: Models.Document) => {
+      let followingId: string | null = null;
+
+      if (typeof record.following === "string") {
+        followingId = record.following;
+      } else if (
+        record.following &&
+        typeof record.following === "object" &&
+        "$id" in record.following
+      ) {
+        followingId = (record.following as Models.Document).$id;
+      }
+
+      if (followingId) {
+        followerCountMap[followingId] = (followerCountMap[followingId] || 0) + 1;
+      }
+    });
+
+    const sortedUserIds = Object.keys(followerCountMap).sort(
+      (a, b) => followerCountMap[b] - followerCountMap[a]
+    );
+
+    const topUserIds = sortedUserIds.slice(0, limit);
+
+    if (topUserIds.length === 0) {
+      return [];
+    }
+
+    const usersResponse = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.userCollectionId,
+      [Query.equal("$id", topUserIds)]
+    );
+
+    const users = usersResponse?.documents ?? [];
+
+    // Gắn thêm followerCount vào từng user để dễ hiển thị nếu cần
+    const usersWithCount = users
+      .map((user) => ({
+        ...user,
+        followerCount: followerCountMap[user.$id] || 0,
+      }))
+      .sort((a, b) => b.followerCount - a.followerCount)
+      .slice(0, limit);
+
+    return usersWithCount;
+  } catch (error: any) {
+    console.error("Lỗi getTopCreators:", error);
+    return [];
+  }
+}
+
 export async function getUsersByIds(userIds: string[]) {
   if (!userIds || userIds.length === 0) {
     return [];

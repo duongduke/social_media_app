@@ -33,6 +33,7 @@ import {
   getFollowersList,
   getFollowingList,
   getUsersByIds,
+  getTopCreators,
   getComments,
   createComment,
   deleteComment,
@@ -362,6 +363,13 @@ export const useGetUsers = ({
     queryFn: () => getUsers({ page, limit, search: searchTerm }),
     keepPreviousData: true,
     enabled,
+  });
+};
+
+export const useGetTopCreators = (limit: number = 5) => {
+  return useQuery({
+    queryKey: [QUERY_KEYS.GET_TOP_CREATORS, limit],
+    queryFn: () => getTopCreators(limit),
   });
 };
 
