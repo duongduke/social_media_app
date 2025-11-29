@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Models } from "appwrite";
 import { useInView } from "react-intersection-observer";
 
 import { Input } from "@/components/ui";
@@ -80,7 +81,15 @@ const Explore = () => {
     );
 
   const shouldShowSearchResults = searchValue !== "";
-  const allPosts = posts?.pages.flatMap((page) => page.documents) || [];
+  const allPosts: Models.Document[] =
+    posts?.pages
+      .flatMap((page) => page.documents as Models.Document[])
+      .reduce((unique: Models.Document[], post: Models.Document) => {
+        if (!unique.some((p) => p.$id === post.$id)) {
+          unique.push(post);
+        }
+        return unique;
+      }, []) || [];
   const sortedPosts = sortPosts(allPosts, activeFilter);
   const shouldShowPosts = !shouldShowSearchResults && sortedPosts.length === 0;
 
